@@ -1,0 +1,8 @@
+2025-03-10 15:48:09,022 - INFO - Starting data preprocessing...
+2025-03-10 15:48:09,024 - ERROR - File not found: dft_traffic_counts_raw_counts.csv
+2025-03-10 15:48:09,024 - ERROR - Preprocessing failed: [Errno 2] No such file or directory: 'dft_traffic_counts_raw_counts.csv'
+2025-03-10 15:51:41,874 - INFO - Starting data preprocessing...
+2025-03-10 15:51:55,917 - INFO - Successfully loaded dataset with shape: (4960860, 35)
+2025-03-10 15:51:59,171 - INFO - Saved scaler to traffic_scaler.pkl
+2025-03-10 15:52:22,842 - INFO - Saved processed data to processed_traffic_final.csv
+2025-03-10 15:52:23,161 - INFO - Preprocessing completed successfully!

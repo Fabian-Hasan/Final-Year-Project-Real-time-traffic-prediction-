@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrafficPredict Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 0.8rem 1rem;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: white !important;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: white !important;
+            transform: translateY(-2px);
+        }
+        
+        .container {
+            margin-top: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-weight: 600;
+            color: var(--primary-color);
+            padding: 15px 20px;
+            font-size: 1.1rem;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        .form-control {
+            border-radius: 6px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+        
+        .prediction-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+        
+        .prediction-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .metrics-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .metrics-table th, .metrics-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metrics-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .metrics-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .alert {
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .section-title {
+            margin-bottom: 25px;
+            color: var(--primary-color);
+            font-weight: 700;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background-color: var(--secondary-color);
+        }
+        
+        .model-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        .arima-icon {
+            color: #3498db;
+        }
+        
+        .lstm-icon {
+            color: #e74c3c;
+        }
+        
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.3em;
+        }
+        
+        /* Animated gradient background for loading */
+        #loading-container {
+            background: linear-gradient(-45deg, #f5f7fa, #ecf0f1, #e0e6ed, #d6e0f0);
+            background-size: 400% 400%;
+            animation: gradient 3s ease infinite;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .prediction-value {
+                font-size: 24px;
+            }
+            
+            .card-body {
+                padding: 15px;
+            }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            vertical-align: text-bottom;
+            border: 0.25em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
+        }
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-traffic-light me-2"></i>
+                TrafficPredict Pro
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="fas fa-home me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#predictions">
+                            <i class="fas fa-chart-line me-1"></i> Predictions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#route">
+                            <i class="fas fa-route me-1"></i> Route
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#documentation">
+                            <i class="fas fa-book me-1"></i> Documentation
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="container-fluid py-5" style="background-color: #2c3e50; color: white; margin-top: 0;">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 fw-bold mb-3">Real-Time Traffic Prediction</h1>
+                    <p class="lead mb-4">Get accurate traffic forecasts and optimized route suggestions using advanced machine learning models.</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-chart-line" style="font-size: 8rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Prediction Form -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-search me-2"></i> Get Traffic Predictions
+                        </div>
+                        <div>
+                            <small class="text-muted">Powered by ARIMA & LSTM Models</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form id="prediction-form">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="start" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-1 text-danger"></i> Start Point
+                                    </label>
+                                    <div class="input-group mb-3">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="start" name="start" placeholder="e.g., London Bridge">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="end" class="form-label">
+                                        <i class="fas fa-flag-checkered me-1 text-success"></i> End Point
+                                    </label>
+                                    <div class="input-group mb-3">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="end" name="end" placeholder="e.g., Tower of London">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="getPrediction()">
+                                <i class="fas fa-chart-line me-1"></i> Get Prediction
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-container"></div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading-container" style="display: none;" class="text-center my-4">
+            <div class="loading-spinner"></div>
+            <h4 class="mt-3 mb-2">Analyzing Traffic Data</h4>
+            <p class="text-muted">Generating predictions and optimizing routes...</p>
+        </div>
+
+        <!-- Results Container -->
+        <div class="row" id="results-container" style="display: none;">
+            <div class="col-md-12 mb-4" id="predictions">
+                <h3 class="section-title">
+                    <i class="fas fa-chart-bar me-2"></i> Traffic Prediction Results
+                </h3>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div><i class="fas fa-tachometer-alt me-2"></i> Current Traffic Predictions</div>
+                        <div><span class="badge bg-info">Next Hour</span></div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3" style="background-color: rgba(52, 152, 219, 0.1); border-radius: 8px;">
+                                    <div class="prediction-label">
+                                        <i class="fas fa-chart-line model-icon arima-icon"></i> ARIMA Model
+                                    </div>
+                                    <div id="arima-prediction" class="prediction-value">-</div>
+                                    <div class="prediction-label">Normalized traffic volume</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="p-3" style="background-color: rgba(231, 76, 60, 0.1); border-radius: 8px;">
+                                    <div class="prediction-label">
+                                        <i class="fas fa-brain model-icon lstm-icon"></i> LSTM Model
+                                    </div>
+                                    <div id="lstm-prediction" class="prediction-value">-</div>
+                                    <div class="prediction-label">Normalized traffic volume</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <p class="mb-0"><small class="text-muted">Values closer to 1 indicate heavier traffic, while values closer to 0 indicate lighter traffic.</small></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i> Model Performance Metrics
+                    </div>
+                    <div class="card-body">
+                        <table class="metrics-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>RMSE</th>
+                                    <th>MAE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-chart-line me-1 arima-icon"></i> ARIMA
+                                    </td>
+                                    <td id="arima-rmse">-</td>
+                                    <td id="arima-mae">-</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-brain me-1 lstm-icon"></i> LSTM
+                                    </td>
+                                    <td id="lstm-rmse">-</td>
+                                    <td id="lstm-mae">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <strong>RMSE:</strong> Root Mean Squared Error - Measures the average magnitude of errors in predictions.
+                                <br>
+                                <strong>MAE:</strong> Mean Absolute Error - Measures the average absolute difference between predicted and actual values.
+                                <br>
+                                Lower values indicate better model performance.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-area me-2"></i> Traffic Forecast Visualization
+                    </div>
+                    <div class="card-body">
+                        <div id="forecast-plot" style="height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-12 mt-4 mb-4" id="route">
+                <h3 class="section-title">
+                    <i class="fas fa-route me-2"></i> Route Information
+                </h3>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-info-circle me-2"></i> Route Details
+                    </div>
+                    <div class="card-body">
+                        <div id="route-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-map me-2"></i> Suggested Route
+                    </div>
+                    <div class="card-body">
+                        <div id="map" style="height: 400px; width: 100%; border-radius: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documentation Section -->
+        <div class="row mt-5" id="documentation">
+            <div class="col-md-12 mb-4">
+                <h3 class="section-title">
+                    <i class="fas fa-book me-2"></i> User Guide
+                </h3>
+            </div>
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-question-circle me-2"></i> How to Use the System
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-list-ol me-2"></i> Steps to Follow</h5>
+                                <ol>
+                                    <li>Enter your start and end points in the form above.</li>
+                                    <li>Click "Get Prediction" to see traffic predictions and route suggestions.</li>
+                                    <li>View the prediction results, forecast visualization, and suggested route.</li>
+                                    <li>Check the model performance metrics to understand prediction accuracy.</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-lightbulb me-2"></i> Understanding the Results</h5>
+                                <ul>
+                                    <li><strong>Prediction Results:</strong> Shows the predicted traffic volume for the next hour.</li>
+                                    <li><strong>Traffic Forecast:</strong> Visualizes predicted traffic patterns for the next 24 hours.</li>
+                                    <li><strong>Route Suggestion:</strong> Displays the recommended route based on current and predicted traffic conditions.</li>
+                                    <li><strong>Model Performance:</strong> Shows how accurate each model is at predicting traffic.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Section -->
+        <div class="row mt-3 mb-5" id="about">
+            <div class="col-md-12 mb-4">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle me-2"></i> Technical Documentation
+                </h3>
+            </div>
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cogs me-2"></i> System Architecture
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-brain me-2"></i> Models</h5>
+                                <ul>
+                                    <li><strong>ARIMA (AutoRegressive Integrated Moving Average):</strong> A statistical model used for time-series forecasting. It captures temporal dependencies in the data.</li>
+                                    <li><strong>LSTM (Long Short-Term Memory):</strong> A type of recurrent neural network capable of learning long-term dependencies in sequential data. It's particularly effective for traffic prediction due to its ability to capture complex patterns.</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-database me-2"></i> Data Preprocessing</h5>
+                                <ul>
+                                    <li>Traffic data was cleaned and aggregated into hourly intervals.</li>
+                                    <li>Missing values were filled using appropriate methods.</li>
+                                    <li>Data was normalized using MinMaxScaler to ensure all values are between 0 and 1.</li>
+                                    <li>Time-based features (hour of day, day of week, etc.) were extracted to capture temporal patterns.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <h5><i class="fas fa-chart-line me-2"></i> Evaluation Metrics</h5>
+                                <ul>
+                                    <li><strong>RMSE (Root Mean Squared Error):</strong> Measures the square root of the average squared differences between predicted and actual values. It gives higher weight to larger errors.</li>
+                                    <li><strong>MAE (Mean Absolute Error):</strong> Measures the average absolute differences between predicted and actual values. It treats all errors equally.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>TrafficPredict Pro</h5>
+                    <p>A real-time predictive traffic system using machine learning models to analyze historical and real-time traffic data.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-light">Home</a></li>
+                        <li><a href="#documentation" class="text-light">Documentation</a></li>
+                        <li><a href="#about" class="text-light">About</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Technologies</h5>
+                    <ul class="list-unstyled">
+                        <li>ARIMA Model</li>
+                        <li>LSTM Neural Network</li>
+                        <li>Flask Framework</li>
+                        <li>Leaflet Maps</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    <p class="mb-0">© 2023 TrafficPredict Pro - Final Year Project</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize map with a default view of London
+        var map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Store map layers for later removal
+        var mapLayers = {
+            startMarker: null,
+            endMarker: null,
+            routeLine: null
+        };
+
+        function updateMap(routeData) {
+            // Clear existing markers and routes
+            if (mapLayers.startMarker) map.removeLayer(mapLayers.startMarker);
+            if (mapLayers.endMarker) map.removeLayer(mapLayers.endMarker);
+            if (mapLayers.routeLine) map.removeLayer(mapLayers.routeLine);
+            
+            // Add start marker
+            if (routeData.start_coords) {
+                mapLayers.startMarker = L.marker(routeData.start_coords)
+                    .addTo(map)
+                    .bindPopup(routeData.start);
+            }
+            
+            // Add end marker
+            if (routeData.end_coords) {
+                mapLayers.endMarker = L.marker(routeData.end_coords)
+                    .addTo(map)
+                    .bindPopup(routeData.end);
+            }
+            
+            // Add route line
+            if (routeData.route_points && routeData.route_points.length > 1) {
+                mapLayers.routeLine = L.polyline(routeData.route_points, {
+                    color: 'blue',
+                    weight: 5,
+                    opacity: 0.7
+                }).addTo(map);
+                
+                // Fit map to show the entire route
+                map.fitBounds(mapLayers.routeLine.getBounds());
+            } else if (routeData.start_coords && routeData.end_coords) {
+                // If no route points but we have start and end, fit to those
+                map.fitBounds([
+                    routeData.start_coords,
+                    routeData.end_coords
+                ]);
+            }
+        }
+
+        // Add smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                document.querySelector(targetId).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        function getPrediction() {
+            const startPoint = document.getElementById('start').value;
+            const endPoint = document.getElementById('end').value;
+            const errorContainer = document.getElementById('error-container');
+            const loadingContainer = document.getElementById('loading-container');
+            const resultsContainer = document.getElementById('results-container');
+            
+            // Show loading with fade effect
+            errorContainer.innerHTML = '';
+            errorContainer.style.display = 'none';
+            resultsContainer.style.display = 'none';
+            
+            // Fade in loading container
+            loadingContainer.style.opacity = '0';
+            loadingContainer.style.display = 'block';
+            setTimeout(() => {
+                loadingContainer.style.transition = 'opacity 0.5s ease';
+                loadingContainer.style.opacity = '1';
+            }, 10);
+            
+            // Prepare form data
+            const formData = new FormData();
+            if (startPoint) formData.append('start', startPoint);
+            if (endPoint) formData.append('end', endPoint);
+            
+            // Make AJAX request
+            $.ajax({
+                url: '/predict',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data) {
+                    // Fade out loading container
+                    loadingContainer.style.transition = 'opacity 0.5s ease';
+                    loadingContainer.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        loadingContainer.style.display = 'none';
+                        
+                        // Show results with fade effect
+                        resultsContainer.style.opacity = '0';
+                        resultsContainer.style.display = 'block';
+                        setTimeout(() => {
+                            resultsContainer.style.transition = 'opacity 0.5s ease';
+                            resultsContainer.style.opacity = '1';
+                        }, 10);
+                        
+                        // Display errors if any
+                        if (data.errors && data.errors.length > 0) {
+                            errorContainer.innerHTML = '<div class="alert alert-danger">' + data.errors.join('<br>') + '</div>';
+                            errorContainer.style.display = 'block';
+                        }
+                        
+                        // Update prediction values
+                        document.getElementById('arima-prediction').innerText = 
+                            data.arima_prediction !== null ? data.arima_prediction.toFixed(3) : 'Not available';
+                        
+                        document.getElementById('lstm-prediction').innerText = 
+                            data.lstm_prediction !== null ? data.lstm_prediction.toFixed(3) : 'Not available';
+                        
+                        // Update forecast plot
+                        if (data.forecast_plot) {
+                            Plotly.newPlot('forecast-plot', JSON.parse(data.forecast_plot).data, JSON.parse(data.forecast_plot).layout);
+                        }
+                        
+                        // Update metrics
+                        if (data.metrics && data.metrics.arima) {
+                            document.getElementById('arima-rmse').innerText = 
+                                data.metrics.arima.rmse !== null ? data.metrics.arima.rmse.toFixed(4) : 'N/A';
+                            document.getElementById('arima-mae').innerText = 
+                                data.metrics.arima.mae !== null ? data.metrics.arima.mae.toFixed(4) : 'N/A';
+                        }
+                        
+                        if (data.metrics && data.metrics.lstm) {
+                            document.getElementById('lstm-rmse').innerText = 
+                                data.metrics.lstm.rmse !== null ? data.metrics.lstm.rmse.toFixed(4) : 'N/A';
+                            document.getElementById('lstm-mae').innerText = 
+                                data.metrics.lstm.mae !== null ? data.metrics.lstm.mae.toFixed(4) : 'N/A';
+                        }
+                        
+                        // Update route information
+                        if (data.route) {
+                            const congestionClass = 
+                                data.route.congestion_level === 'Low' ? 'congestion-low' : 
+                                data.route.congestion_level === 'Medium' ? 'congestion-medium' : 
+                                'congestion-high';
+                            
+                            const routeInfo = `
+                                <div class="route-info-item">
+                                    <div class="route-info-label">From:</div>
+                                    <div class="route-info-value">${data.route.start}</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">To:</div>
+                                    <div class="route-info-value">${data.route.end}</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">Estimated Time:</div>
+                                    <div class="route-info-value">${data.route.estimated_time} minutes</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">Distance:</div>
+                                    <div class="route-info-value">${data.route.distance} km</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">Congestion Level:</div>
+                                    <div class="route-info-value ${congestionClass}">${data.route.congestion_level}</div>
+                                </div>
+                            `;
+                            document.getElementById('route-info').innerHTML = routeInfo;
+                            
+                            // Update map
+                            updateMap(data.route);
+                        }
+                    }, 500);
+                },
+                error: function(xhr, status, error) {
+                    loadingContainer.style.display = 'none';
+                    errorContainer.innerHTML = '<div class="alert alert-danger">Error connecting to server: ' + error + '</div>';
+                    errorContainer.style.display = 'block';
+                    resultsContainer.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html> 
